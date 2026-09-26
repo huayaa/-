@@ -323,16 +323,17 @@
                 <h2>執筆者端末（認証・投稿）</h2>
                 <div id="user-status" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 15px;"></div>
 
-                <!-- 未ログイン時に表示するフォーム -->
-                <div id="auth-area">
-                    <p style="font-size: 0.85rem; margin-bottom: 10px;">共同執筆を行うにはログインまたはアカウント登録が必要です。</p>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                        <input type="email" id="auth-email" placeholder="メールアドレス" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
-                        <input type="password" id="auth-pass" placeholder="パスワード" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
-                        <button onclick="handleLogin()" style="padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--accent-white); color: #fff; cursor: pointer;">ログイン</button>
-                        <button onclick="handleSignUp()" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-dim); cursor: pointer;">新規登録</button>
-                    </div>
-                </div>
+<!-- 未ログイン時に表示するフォーム -->
+<div id="auth-area">
+    <p style="font-size: 0.85rem; margin-bottom: 10px;">共同執筆を行うにはログインまたはアカウント登録が必要です。</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <input type="email" id="auth-email" placeholder="メールアドレス" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+        <input type="password" id="auth-pass" placeholder="パスワード（6文字以上）" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+        <button onclick="handleLogin()" style="padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--accent-white); color: #fff; cursor: pointer;">ログイン</button>
+        <!-- ★新規登録ボタンの枠線と文字色を白に変更★ -->
+        <button onclick="handleSignUp()" style="padding: 8px 16px; background: transparent; border: 1px solid var(--accent-white); color: #fff; cursor: pointer;">新規登録</button>
+    </div>
+</div>
 
                 <!-- ログイン完了時に表示する投稿フォーム -->
                 <div id="post-area" style="display: none;">
