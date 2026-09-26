@@ -462,41 +462,53 @@ const firebaseConfig = {
             }
         });
 
-        // --- 2. 新規アカウント登録 ---
-        window.handleSignUp = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
-            
-            if (!email || !pass) {
-                alert('メールアドレスとパスワードを入力してください。');
-                return;
-            }
+// --- 2. 新規アカウント登録 ---
+window.handleSignUp = async () => {
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
+    
+    if (!email || !pass) {
+        alert('メールアドレスとパスワードを入力してください。');
+        return;
+    }
 
-            try {
-                await createUserWithEmailAndPassword(auth, email, pass);
-                alert('アカウントを作成し、ログインしました！');
-            } catch (e) {
-                alert('登録エラー: ' + e.message);
-            }
-        };
+    try {
+        await createUserWithEmailAndPassword(auth, email, pass);
+        alert('アカウントを作成し、ログインしました！');
+    } catch (e) {
+        if (e.code === 'auth/weak-password') {
+            alert('パスワードは6文字以上で入力してください。');
+        } else if (e.code === 'auth/email-already-in-use') {
+            alert('このメールアドレスは既に登録されています。「ログイン」をお試しください。');
+        } else if (e.code === 'auth/invalid-email') {
+            alert('正しいメールアドレスの形式で入力してください。');
+        } else {
+            alert('登録エラー: ' + e.message);
+        }
+    }
+};
 
-        // --- 3. ログイン処理 ---
-        window.handleLogin = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
+// --- 3. ログイン処理 ---
+window.handleLogin = async () => {
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
 
-            if (!email || !pass) {
-                alert('メールアドレスとパスワードを入力してください。');
-                return;
-            }
+    if (!email || !pass) {
+        alert('メールアドレスとパスワードを入力してください。');
+        return;
+    }
 
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-                alert('ログインしました！');
-            } catch (e) {
-                alert('ログインエラー: ' + e.message);
-            }
-        };
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        alert('ログインしました！');
+    } catch (e) {
+        if (e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+            alert('メールアドレスまたはパスワードが間違っています。アカウント未作成の場合は「新規登録」を押してください。');
+        } else {
+            alert('ログインエラー: ' + e.message);
+        }
+    }
+};
 
         // --- 4. ログアウト処理 ---
         window.handleLogout = () => {
