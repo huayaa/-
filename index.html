@@ -1,50 +1,474 @@
-<!-- Firebase SDK (バージョン10) の読み込み -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅行記録社団 - 内部データベース</title>
+    <style>
+        /* --- 基本設定・モノトーン＆レトロフォント --- */
+        :root {
+            --bg-color: #0f0f11;
+            --card-bg: #16161a;
+            --text-color: #d1d5db;
+            --text-dim: #828893;
+            --border-color: #2a2b32;
+            --accent-white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: "Courier New", Courier, "YuMincho", "Shippori Mincho", "Hiragino Mincho ProN", serif;
+            line-height: 1.8;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 画面全体のノスタルジックな走査線（CRT風）効果 */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* --- レイアウト構造 --- */
+        .sidebar {
+            width: 260px;
+            background-color: #08080a;
+            border-right: 1px solid var(--border-color);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 40px 60px;
+            max-width: 900px;
+            overflow-y: auto;
+        }
+
+        /* --- ヘッダー・ロゴ --- */
+        .logo-area {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .logo-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-white);
+            letter-spacing: 0.15em;
+        }
+
+        .logo-sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            margin-top: 5px;
+        }
+
+        /* --- ナビゲーション --- */
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 12px;
+        }
+
+        .nav-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: block;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--accent-white);
+            border-color: var(--accent-white);
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .clearance-notice {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- コンテンツセクション --- */
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: var(--accent-white);
+            border-bottom: 1px solid var(--accent-white);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            letter-spacing: 0.1em;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            color: var(--accent-white);
+            margin-bottom: 15px;
+            border-left: 2px solid var(--accent-white);
+            padding-left: 10px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        /* --- 特殊デザインパーツ --- */
+        .note-box {
+            background-color: #101014;
+            border: 1px dashed var(--border-color);
+            padding: 15px 20px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            color: #b5baaf;
+        }
+
+        .signature {
+            text-align: right;
+            margin-top: 10px;
+            font-weight: bold;
+            color: var(--accent-white);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.88rem;
+        }
+
+        th {
+            width: 28%;
+            color: var(--text-dim);
+            font-weight: normal;
+        }
+
+        /* 伏字デザイン */
+        .redacted {
+            background-color: #222228;
+            color: #222228;
+            user-select: none;
+            padding: 0 4px;
+        }
+
+        .redacted:hover {
+            color: var(--accent-white);
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- サイドバー -->
+    <div class="sidebar">
+        <div>
+            <div class="logo-area">
+                <div class="logo-title">旅行記録社団</div>
+                <div class="logo-sub">TRAVEL RECORD ASSOC.</div>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item"><a class="nav-link active" onclick="showTab('home')">社内通達・ポータル</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="showTab('members')">社員名簿</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="showTab('glossary')">用語アーカイブ</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="showTab('unreturned')">未帰還者記録：TR-13-001</a></li>
+            </ul>
+        </div>
+        <div class="clearance-badge-area">
+            <div class="clearance-notice">
+                ネットワーク：内部閉鎖回線<br>
+                本部所在地：<span class="redacted">日本非公表領域</span><br>
+                記録整合性：正常
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-content">
+
+        <!-- 1. 社内通達・ポータル -->
+        <div id="home" class="section active">
+            <h1>内部ポータル / 通達事項</h1>
+            
+            <div class="card">
+                <h2>【代表メッセージ】安全配慮および労務状況について</h2>
+                <div class="note-box">
+                    「みんなお疲れ様！最近13番書庫の扉が増えてて調査も大変だと思うけど、無理な連続渡航は絶対に禁止ね。須田さんからも『体調と安全が第一！危険だと思ったらすぐ引き返すこと！』って強めにお願いされてるから、佐藤くんも異世界から戻ったらちゃんと代休を取ること。お土産は無事で元気な顔だけで十分だからね。」
+                    <div class="signature">代表：海谷 廻</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>社団運用基本方針</h2>
+                <table>
+                    <tr>
+                        <th>組織名称</th>
+                        <td>旅行記録社団</td>
+                    </tr>
+                    <tr>
+                        <th>組織性質</th>
+                        <td>非政府独立機関（国内外の警察・情報機関と協定締結）</td>
+                    </tr>
+                    <tr>
+                        <th>基本目的</th>
+                        <td>多元宇宙（書庫）および各接続世界の構造・環境の記録</td>
+                    </tr>
+                    <tr>
+                        <th>行動指針</th>
+                        <td>
+                            ・社員の安全確保を最優先とする（記録獲得より生命優先）<br>
+                            ・「危険のため引き返す」判断を正式かつ正当な業務判断とする<br>
+                            ・未帰還者の確定死亡処理を行わず、帰還方法の模索を継続する
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>採用体制</th>
+                        <td>完全スカウト制。警察機構等のヒューミントを介し感性（"視える"資質）を持つ人材を選抜。</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. 社員名簿 -->
+        <div id="members" class="section">
+            <h1>社員名簿（主要メンバー）</h1>
+
+            <div class="card">
+                <h2>海谷 廻（Kaiya Meguru）</h2>
+                <table>
+                    <tr><th>役職 / 所属</th><td>社長 / 本部直属</td></tr>
+                    <tr><th>雰囲気・性格</th><td>気さくでフランク。社員との距離が近い「イケオジ」。</td></tr>
+                    <tr><th>権限</th><td>社団における全事項の最終決済権限</td></tr>
+                    <tr><th>特記事項</th><td>正論（主に須田研究部長からの指摘）に極めて弱い。</td></tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>須田 朱音（Suda Akane）</h2>
+                <table>
+                    <tr><th>社員番号</th><td>2087</td></tr>
+                    <tr><th>役職 / 所属</th><td>研究部長 / 研究部</td></tr>
+                    <tr><th>言語 / 性格</th><td>関西弁 / 冷静・頼れる姉御肌</td></tr>
+                    <tr><th>主研究分野</th><td>未帰還社員の帰還方法確立、13番書庫・異世界構造研究</td></tr>
+                    <tr><th>趣味・特技</th><td>料理（たこ焼き調理専門。なお調理中の雰囲気は解剖現場に近い）</td></tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>佐藤 劉（Sato Ryu）</h2>
+                <table>
+                    <tr><th>社員番号</th><td>2099</td></tr>
+                    <tr><th>役職 / 所属</th><td>旅行者 / 旅行部</td></tr>
+                    <tr><th>外見 / 話し方</th><td>黒縁眼鏡、黒いコート / 標準語（※関西出身）</td></tr>
+                    <tr><th>主な業務</th><td>13番書庫を通じた異世界探索および現場記録</td></tr>
+                    <tr><th>特記事項</th><td>オフィーリアの無言の上目遣いに対する耐性が皆無。</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. 用語アーカイブ -->
+        <div id="glossary" class="section">
+            <h1>基本用語アーカイブ</h1>
+
+            <!-- 執筆者用 認証・投稿エリア -->
+            <div class="card">
+                <h2>執筆者端末（認証・投稿）</h2>
+                <div id="user-status" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 15px;"></div>
+
+                <!-- 未ログイン時に表示するフォーム -->
+                <div id="auth-area">
+                    <p style="font-size: 0.85rem; margin-bottom: 10px;">共同執筆を行うにはログインまたはアカウント登録が必要です。</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                        <input type="email" id="auth-email" placeholder="メールアドレス" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+                        <input type="password" id="auth-pass" placeholder="パスワード" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+                        <button onclick="handleLogin()" style="padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--accent-white); color: #fff; cursor: pointer;">ログイン</button>
+                        <button onclick="handleSignUp()" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-dim); cursor: pointer;">新規登録</button>
+                    </div>
+                </div>
+
+                <!-- ログイン完了時に表示する投稿フォーム -->
+                <div id="post-area" style="display: none;">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="text" id="post-title" placeholder="用語名（例: 第900番扉）" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+                        <input type="text" id="post-category" placeholder="カテゴリー（例: 13番書庫 / 調査記録）" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+                        <input type="text" id="post-author" placeholder="記録者名（例: 須田）" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff;">
+                        <textarea id="post-desc" placeholder="解説本文を入力してください..." rows="4" style="padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff; font-family: inherit;"></textarea>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <button onclick="handlePostTerm()" style="padding: 8px 16px; background: var(--accent-white); border: none; color: #000; font-weight: bold; cursor: pointer;">データベースに記録</button>
+                            <button onclick="handleLogout()" style="padding: 6px 12px; background: transparent; border: 1px solid var(--border-color); color: var(--text-dim); cursor: pointer;">ログアウト</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 固定用語項目 -->
+            <div class="card">
+                <h2>書庫（Library / Archive）</h2>
+                <p>一般的な「本棚のある施設」ではなく、多元宇宙をひとまとまりとして捉えるための構造的単位。すべての世界はいずれかの「書庫」に属している。</p>
+                <div class="note-box">
+                    ・<b>1番書庫</b>：我々の存在する現行領域（地球）。<br>
+                    ・<b>13番書庫</b>：真っ白な壁と無数の扉で構成された異世界接続領域。1日ごとに新しい扉が発生する。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>創世以前における二つの「無」</h2>
+                <table>
+                    <tr>
+                        <th>物理的な無</th>
+                        <td>物質・空間・時間が存在しない状態。ただし「何も存在しない」という概念構造自体は保持されている。</td>
+                    </tr>
+                    <tr>
+                        <th>概念的な無</th>
+                        <td>「存在」「非存在」「無」という概念そのものが存在しない極限状態。「ない」という概念すら存在しない。</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>未帰還者</h2>
+                <p>調査等のため異世界へ赴いたのち社団へ戻っていない人物。「未帰還者 ＝ 死亡者」ではなく、明確な証拠がない限り死亡処理を行わず、研究部（須田）により帰還方法の模索が継続される。</p>
+            </div>
+        </div>
+
+        <!-- 4. 未帰還者記録（オフィーリア） -->
+        <div id="unreturned" class="section">
+            <h1>未帰還者記録：TR-13-001</h1>
+
+            <div class="card">
+                <h2>対象情報：オフィーリア</h2>
+                <table>
+                    <tr><th>立場</th><td>旅行記録社団 未帰還社員</td></tr>
+                    <tr><th>現在の状態</th><td>13番書庫内部に黒い影のような姿で存在</td></tr>
+                    <tr><th>意思疎通</th><td>発声不能。筆記（ノートやスケッチブックへの文字記述）により行う</td></tr>
+                    <tr><th>異常性</th><td>行き先の世界で死亡が確認されているが、13番書庫には存在している。「存在 / 非存在」の境界線に滞留中。</td></tr>
+                </table>
+
+                <div class="note-box">
+                    <p><b>【現場ログ抜粋：佐藤旅行者による手記】</b></p>
+                    <p style="margin-top: 8px; color: #828893;">
+                        「真っ白な壁に新しい扉が生まれていた。調査に向かおうとすると、黒い影（オフィーリア）がコートの裾を引いた。彼女はスケッチブックに可愛らしい字で『ここは危険、引き返そう？』と書き、じっと上目遣いでこちらを見つめてきた。社団規定および業務上の総合判断に基づき、本日の探索を即座に中止した。」
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- UI タブ切り替え スクリプト -->
+    <script>
+        function showTab(tabId) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(sec => sec.classList.remove('active'));
+
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => link.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+        }
+    </script>
+
+    <!-- Firebase SDK (バージョン10) および認証・データベーススクリプト -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAvthBfRgLWZzbMj-o-hK2eaimWyO7LiMY",
-  authDomain: "rst-000.firebaseapp.com",
-  databaseURL: "https://rst-000-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "rst-000",
-  storageBucket: "rst-000.firebasestorage.app",
-  messagingSenderId: "774680536121",
-  appId: "1:774680536121:web:1f330965f734ca5d9299e8",
-  measurementId: "G-9S3LMQMZJ8"
-};
-        // Firebaseの初期化
+        // ★ご自身のFirebaseプロジェクト設定値に書き換えてください★
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase初期化
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- 画面要素の取得 ---
+        // --- DOM要素取得 ---
         const authArea = document.getElementById('auth-area');
         const postArea = document.getElementById('post-area');
         const userStatus = document.getElementById('user-status');
 
-        // --- 1. ログイン状態の監視 ---
+        // --- 1. ログイン状態監視 ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // ログインしている時
                 userStatus.textContent = `ログイン中: ${user.email}`;
                 authArea.style.display = 'none';
                 postArea.style.display = 'block';
             } else {
-                // ログアウトしている時
-                userStatus.textContent = '未ログイン（閲覧のみ）';
+                userStatus.textContent = '未ログイン（閲覧のみ可能です）';
                 authArea.style.display = 'block';
                 postArea.style.display = 'none';
             }
         });
 
-        // --- 2. 新規登録機能 ---
+        // --- 2. 新規アカウント登録 ---
         window.handleSignUp = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
+            
+            if (!email || !pass) {
+                alert('メールアドレスとパスワードを入力してください。');
+                return;
+            }
+
             try {
                 await createUserWithEmailAndPassword(auth, email, pass);
                 alert('アカウントを作成し、ログインしました！');
@@ -53,10 +477,16 @@ const firebaseConfig = {
             }
         };
 
-        // --- 3. ログイン機能 ---
+        // --- 3. ログイン処理 ---
         window.handleLogin = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
+
+            if (!email || !pass) {
+                alert('メールアドレスとパスワードを入力してください。');
+                return;
+            }
+
             try {
                 await signInWithEmailAndPassword(auth, email, pass);
                 alert('ログインしました！');
@@ -65,12 +495,13 @@ const firebaseConfig = {
             }
         };
 
-        // --- 4. ログアウト機能 ---
+        // --- 4. ログアウト処理 ---
         window.handleLogout = () => {
             signOut(auth);
+            alert('ログアウトしました。');
         };
 
-        // --- 5. 用語の投稿機能 ---
+        // --- 5. 用語投稿機能 ---
         window.handlePostTerm = async () => {
             const title = document.getElementById('post-title').value;
             const category = document.getElementById('post-category').value;
@@ -83,7 +514,6 @@ const firebaseConfig = {
             }
 
             try {
-                // Firestoreの 'glossary' コレクションに保存
                 await addDoc(collection(db, "glossary"), {
                     title: title,
                     category: category,
@@ -92,15 +522,17 @@ const firebaseConfig = {
                     createdAt: new Date()
                 });
                 alert('用語をデータベースに記録しました！');
-                // フォームをリセット
+                
                 document.getElementById('post-title').value = '';
+                document.getElementById('post-category').value = '';
                 document.getElementById('post-desc').value = '';
+                document.getElementById('post-author').value = '';
             } catch (e) {
                 alert('投稿エラー: ' + e.message);
             }
         };
 
-        // --- 6. 投稿データのリアルタイム自動読み込み ---
+        // --- 6. Firestoreリアルタイム更新受信 ---
         const glossaryContainer = document.getElementById('glossary');
         const dynamicSection = document.createElement('div');
         dynamicSection.className = 'card';
@@ -109,7 +541,6 @@ const firebaseConfig = {
 
         const dynamicTermsContainer = document.getElementById('dynamic-terms');
 
-        // データに変更があったら自動で画面を更新する
         const q = query(collection(db, "glossary"), orderBy("createdAt", "desc"));
         onSnapshot(q, (snapshot) => {
             dynamicTermsContainer.innerHTML = '';
@@ -120,7 +551,7 @@ const firebaseConfig = {
                 box.style.marginBottom = '15px';
                 box.innerHTML = `
                     <div style="font-weight:bold; color:var(--accent-white); font-size:1rem;">
-                        ${data.title} <span style="font-size:0.75rem; color:var(--text-dim); font-weight:normal;">[${data.category}]</span>
+                        ${data.title} <span style="font-size:0.75rem; color:var(--text-dim); font-weight:normal;">[${data.category || '未分類'}]</span>
                     </div>
                     <div style="margin-top:5px;">${data.description}</div>
                     <div style="text-align:right; font-size:0.75rem; color:var(--text-dim); margin-top:5px;">記録者: ${data.author}</div>
@@ -129,3 +560,5 @@ const firebaseConfig = {
             });
         });
     </script>
+</body>
+</html>
